@@ -65,14 +65,24 @@ class OCRProcessor:
 
         return preprocessed_path
 
-    def process_image(self, image_path: str, format_type: str = "markdown", preprocess: bool = True) -> str:
+    def process_image(self, image_path: str, format_type: str = "markdown", preprocess: bool = True, custom_prompt: str = None) -> str:
         """
         Process an image and extract text in the specified format
         
         Args:
             image_path: Path to the image file
-            format_type: One of ["markdown", "text", "json", "structured", "key_value"]
+            format_type: One of ["markdown", "text", "json", "structured", "key_value"]. 
+                        Note: This is only used when custom_prompt is None.
             preprocess: Whether to apply image preprocessing
+            custom_prompt: Optional custom prompt to use for the OCR task. 
+                         If provided, this will override the format_type prompt.
+        
+        Returns:
+            Extracted text in the specified format or custom prompt response
+        
+        Note:
+            When both format_type and custom_prompt are provided, custom_prompt takes precedence.
+            The format_type parameter is only used when custom_prompt is None.
         """
         try:
             if preprocess:
@@ -115,9 +125,9 @@ class OCRProcessor:
                 - Present each pair on a new line as 'key: value'"""
             }
 
-            # Get the appropriate prompt
-            prompt = prompts.get(format_type, prompts["text"])
-
+            # Use custom prompt if provided, otherwise get the appropriate format prompt
+            prompt = custom_prompt if custom_prompt else prompts.get(format_type, prompts["text"])
+            
             # Prepare the request payload
             payload = {
                 "model": self.model_name,
@@ -151,19 +161,27 @@ class OCRProcessor:
         input_path: Union[str, List[str]],
         format_type: str = "markdown",
         recursive: bool = False,
-        preprocess: bool = True
+        preprocess: bool = True,
+        custom_prompt: str = None
     ) -> Dict[str, Any]:
         """
         Process multiple images in batch
         
         Args:
             input_path: Path to directory or list of image paths
-            format_type: Output format type
+            format_type: Output format type. One of ["markdown", "text", "json", "structured", "key_value"].
+                        Note: This is only used when custom_prompt is None.
             recursive: Whether to search directories recursively
             preprocess: Whether to apply image preprocessing
+            custom_prompt: Optional custom prompt to use for the OCR task.
+                         If provided, this will override the format_type prompt.
             
         Returns:
             Dictionary with results and statistics
+        
+        Note:
+            When both format_type and custom_prompt are provided, custom_prompt takes precedence.
+            The format_type parameter is only used when custom_prompt is None.
         """
         # Collect all image paths
         image_paths = []
@@ -185,7 +203,7 @@ class OCRProcessor:
         with tqdm(total=len(image_paths), desc="Processing images") as pbar:
             with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                 future_to_path = {
-                    executor.submit(self.process_image, str(path), format_type, preprocess): path
+                    executor.submit(self.process_image, str(path), format_type, preprocess, custom_prompt): path
                     for path in image_paths
                 }
                 
