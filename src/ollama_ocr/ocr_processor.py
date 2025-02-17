@@ -68,21 +68,12 @@ class OCRProcessor:
     def process_image(self, image_path: str, format_type: str = "markdown", preprocess: bool = True, custom_prompt: str = None) -> str:
         """
         Process an image and extract text in the specified format
-        
+
         Args:
             image_path: Path to the image file
-            format_type: One of ["markdown", "text", "json", "structured", "key_value"]. 
-                        Note: This is only used when custom_prompt is None.
+            format_type: One of ["markdown", "text", "json", "structured", "key_value"]
             preprocess: Whether to apply image preprocessing
-            custom_prompt: Optional custom prompt to use for the OCR task. 
-                         If provided, this will override the format_type prompt.
-        
-        Returns:
-            Extracted text in the specified format or custom prompt response
-        
-        Note:
-            When both format_type and custom_prompt are provided, custom_prompt takes precedence.
-            The format_type parameter is only used when custom_prompt is None.
+            custom_prompt: If provided, this prompt overrides the default based on format_type
         """
         try:
             if preprocess:
@@ -94,40 +85,44 @@ class OCRProcessor:
             if image_path.endswith(('_preprocessed.jpg', '_temp.jpg')):
                 os.remove(image_path)
 
-            # Generic prompt templates for different formats
-            prompts = {
-                "markdown": """Please look at this image and extract all the text content. Format the output in markdown:
-                - Use headers (# ## ###) for titles and sections
-                - Use bullet points (-) for lists
-                - Use proper markdown formatting for emphasis and structure
-                - Preserve the original text hierarchy and formatting as much as possible""",
+            if custom_prompt and custom_prompt.strip():
+                prompt = custom_prompt
+                print("Using custom prompt:", prompt)  # Debug print
+            else:
+                # Generic prompt templates for different formats
+                prompts = {
+                    "markdown": """Please look at this image and extract all the text content. Format the output in markdown:
+                    - Use headers (# ## ###) for titles and sections
+                    - Use bullet points (-) for lists
+                    - Use proper markdown formatting for emphasis and structure
+                    - Preserve the original text hierarchy and formatting as much as possible""",
+    
+                    "text": """Please look at this image and extract all the text content. 
+                    Provide the output as plain text, maintaining the original layout and line breaks where appropriate.
+                    Include all visible text from the image.""",
+    
+                    "json": """Please look at this image and extract all the text content. Structure the output as JSON with these guidelines:
+                    - Identify different sections or components
+                    - Use appropriate keys for different text elements
+                    - Maintain the hierarchical structure of the content
+                    - Include all visible text from the image""",
+    
+                    "structured": """Please look at this image and extract all the text content, focusing on structural elements:
+                    - Identify and format any tables
+                    - Extract lists and maintain their structure
+                    - Preserve any hierarchical relationships
+                    - Format sections and subsections clearly""",
+    
+                    "key_value": """Please look at this image and extract text that appears in key-value pairs:
+                    - Look for labels and their associated values
+                    - Extract form fields and their contents
+                    - Identify any paired information
+                    - Present each pair on a new line as 'key: value'"""
+                }
+    
+                prompt = prompts.get(format_type, prompts["text"])
+                print("Using default prompt:", prompt)  # Debug print
 
-                "text": """Please look at this image and extract all the text content. 
-                Provide the output as plain text, maintaining the original layout and line breaks where appropriate.
-                Include all visible text from the image.""",
-
-                "json": """Please look at this image and extract all the text content. Structure the output as JSON with these guidelines:
-                - Identify different sections or components
-                - Use appropriate keys for different text elements
-                - Maintain the hierarchical structure of the content
-                - Include all visible text from the image""",
-
-                "structured": """Please look at this image and extract all the text content, focusing on structural elements:
-                - Identify and format any tables
-                - Extract lists and maintain their structure
-                - Preserve any hierarchical relationships
-                - Format sections and subsections clearly""",
-
-                "key_value": """Please look at this image and extract text that appears in key-value pairs:
-                - Look for labels and their associated values
-                - Extract form fields and their contents
-                - Identify any paired information
-                - Present each pair on a new line as 'key: value'"""
-            }
-
-            # Use custom prompt if provided, otherwise get the appropriate format prompt
-            prompt = custom_prompt if custom_prompt else prompts.get(format_type, prompts["text"])
-            
             # Prepare the request payload
             payload = {
                 "model": self.model_name,
@@ -169,19 +164,13 @@ class OCRProcessor:
         
         Args:
             input_path: Path to directory or list of image paths
-            format_type: Output format type. One of ["markdown", "text", "json", "structured", "key_value"].
-                        Note: This is only used when custom_prompt is None.
+            format_type: Output format type
             recursive: Whether to search directories recursively
             preprocess: Whether to apply image preprocessing
-            custom_prompt: Optional custom prompt to use for the OCR task.
-                         If provided, this will override the format_type prompt.
+            custom_prompt: If provided, this prompt overrides the default for each image
             
         Returns:
             Dictionary with results and statistics
-        
-        Note:
-            When both format_type and custom_prompt are provided, custom_prompt takes precedence.
-            The format_type parameter is only used when custom_prompt is None.
         """
         # Collect all image paths
         image_paths = []

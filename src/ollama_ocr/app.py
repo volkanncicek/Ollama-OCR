@@ -62,25 +62,27 @@ st.markdown("""
 def get_available_models():
     return ["llava:7b", "llama3.2-vision:11b"]
 
-def process_single_image(processor, image_path, format_type, enable_preprocessing):
+def process_single_image(processor, image_path, format_type, enable_preprocessing, custom_prompt):
     """Process a single image and return the result"""
     try:
         result = processor.process_image(
             image_path=image_path,
             format_type=format_type,
-            preprocess=enable_preprocessing
+            preprocess=enable_preprocessing,
+            custom_prompt=custom_prompt  # Pass custom_prompt here
         )
         return result
     except Exception as e:
         return f"Error processing image: {str(e)}"
 
-def process_batch_images(processor, image_paths, format_type, enable_preprocessing):
+def process_batch_images(processor, image_paths, format_type, enable_preprocessing, custom_prompt):
     """Process multiple images and return results"""
     try:
         results = processor.process_batch(
             input_path=image_paths,
             format_type=format_type,
-            preprocess=enable_preprocessing
+            preprocess=enable_preprocessing,
+            custom_prompt=custom_prompt
         )
         return results
     except Exception as e:
@@ -105,6 +107,13 @@ def main():
             ["markdown", "text", "json", "structured", "key_value"],
             help="Choose how you want the extracted text to be formatted"
         )
+        
+        # Custom prompt input
+        custom_prompt_input = st.text_area(
+            "📝 Custom Prompt (optional)",
+            value="",
+            help="Enter a custom prompt to override the default. Leave empty to use the predefined prompt."
+        )
 
         max_workers = st.slider(
             "🔄 Parallel Processing",
@@ -127,6 +136,9 @@ def main():
             st.info("LLaVA 7B: Efficient vision-language model optimized for real-time processing")
         else:
             st.info("Llama 3.2 Vision: Advanced model with high accuracy for complex text extraction")
+    
+    # Determine if a custom prompt should be used (if text area is not empty)
+    custom_prompt = custom_prompt_input if custom_prompt_input.strip() != "" else None
 
     # Initialize OCR Processor
     processor = OCRProcessor(model_name=selected_model, max_workers=max_workers)
@@ -172,7 +184,8 @@ def main():
                                 processor, 
                                 image_paths[0], 
                                 format_type,
-                                enable_preprocessing
+                                enable_preprocessing,
+                                custom_prompt  # Pass custom_prompt here
                             )
                             st.subheader("📝 Extracted Text")
                             st.markdown(result)
@@ -186,11 +199,11 @@ def main():
                             )
                         else:
                             # Batch processing
-                            results = process_batch_images(
-                                processor,
-                                image_paths,
-                                format_type,
-                                enable_preprocessing
+                            results = processor.process_batch(
+                                input_path=image_paths,
+                                format_type=format_type,
+                                preprocess=enable_preprocessing,
+                                custom_prompt=custom_prompt
                             )
                             
                             # Display statistics

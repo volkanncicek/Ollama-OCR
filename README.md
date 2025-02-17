@@ -24,6 +24,8 @@ A powerful OCR (Optical Character Recognition) package that uses state-of-the-ar
   - Progress tracking for each image
   - Image preprocessing (resize, normalize, etc.)
 
+- **Custom Prompts**
+  - Override default prompts with custom instructions for text extraction.
 
 ## 📦 Package Installation
 
@@ -52,7 +54,8 @@ ocr = OCRProcessor(model_name='llama3.2-vision:11b')  # You can use any vision m
 # Process an image
 result = ocr.process_image(
     image_path="path/to/your/image.png",
-    format_type="markdown"  # Options: markdown, text, json, structured, key_value
+    format_type="markdown",  # Options: markdown, text, json, structured, key_value
+    custom_prompt="Extract all text, focusing on dates and names." # Optional custom prompt
 )
 print(result)
 ```
@@ -70,7 +73,8 @@ batch_results = ocr.process_batch(
     input_path="path/to/images/folder",  # Directory or list of image paths
     format_type="markdown",
     recursive=True,  # Search subdirectories
-    preprocess=True  # Enable image preprocessing
+    preprocess=True,  # Enable image preprocessing
+    custom_prompt="Extract all text, focusing on dates and names." # Optional custom prompt
 )
 # Access results
 for file_path, text in batch_results['results'].items():

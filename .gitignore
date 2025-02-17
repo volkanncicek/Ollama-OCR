@@ -10,3 +10,4 @@ input/img1.png
 /build
 setup.py
 setup.py
+*.pyc
