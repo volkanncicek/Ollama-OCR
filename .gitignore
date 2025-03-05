@@ -11,3 +11,6 @@ input/img1.png
 setup.py
 setup.py
 *.pyc
+*.png
+input/pdf.pdf
+*.pyc
