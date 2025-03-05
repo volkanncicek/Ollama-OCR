@@ -7,7 +7,7 @@ from tqdm import tqdm
 import concurrent.futures
 from pathlib import Path
 import cv2
-from pdf2image import convert_from_path
+import fitz  # Import the fitz library (pymupdf)
 
 class OCRProcessor:
     def __init__(self, model_name: str = "llama3.2-vision:11b", 
@@ -23,23 +23,42 @@ class OCRProcessor:
         with open(image_path, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode("utf-8")
 
+    def _pdf_to_images(self, pdf_path: str) -> List[str]:
+        """
+        Convert each page of a PDF to an image using fitz (pymupdf).
+        Saves each page as a temporary image.
+        Returns a list of image paths.
+        """
+        try:
+            doc = fitz.open(pdf_path)
+            image_paths = []
+            for page_num in range(doc.page_count):
+                page = doc[page_num]
+                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # Increase resolution
+                temp_path = f"{pdf_path}_page{page_num}.png"  # Unique filename for each page
+                pix.save(temp_path)
+                image_paths.append(temp_path)
+            doc.close()
+            return image_paths
+        except Exception as e:
+            raise ValueError(f"Could not convert PDF to images: {e}")
+
     def _preprocess_image(self, image_path: str) -> str:
         """
         Preprocess image before OCR:
-        - Convert PDF to image if needed
+        - Convert PDF to image if needed (using fitz)
         - Auto-rotate
         - Enhance contrast
         - Reduce noise
         """
         # Handle PDF files
         if image_path.lower().endswith('.pdf'):
-            pages = convert_from_path(image_path)
-            if not pages:
-                raise ValueError("Could not convert PDF to image")
-            # Save first page as temporary image
-            temp_path = f"{image_path}_temp.jpg"
-            pages[0].save(temp_path, 'JPEG')
-            image_path = temp_path
+            # If it's a PDF, convert all pages to images and return the first one
+            image_paths = self._pdf_to_images(image_path)
+            if image_paths:
+                image_path = image_paths[0]  # Process only the first page for now
+            else:
+                raise ValueError(f"No images found converting PDF {image_path}")
 
         # Read image
         image = cv2.imread(image_path)

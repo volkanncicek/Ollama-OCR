@@ -7,3 +7,5 @@ tqdm
 opencv-python
 pdf2image
 numpy
+fitz
+pymupdf
