@@ -4,7 +4,7 @@
 <a href="https://github.com/imanoop7/Ollama-OCR/graphs/contributors"><img src="https://img.shields.io/github/contributors-anon/imanoop7/Ollama-OCR.svg" alt="Contributors"></a>
 # Ollama OCR 🔍
 
-A powerful OCR (Optical Character Recognition) package that uses state-of-the-art vision language models through Ollama to extract text from images. Available both as a Python package and a Streamlit web application.
+A powerful OCR (Optical Character Recognition) package that uses state-of-the-art vision language models through Ollama to extract text from images and PDF. Available both as a Python package and a Streamlit web application.
 
 ## 🌟 Features
 
@@ -26,6 +26,9 @@ A powerful OCR (Optical Character Recognition) package that uses state-of-the-ar
 
 - **Custom Prompts**
   - Override default prompts with custom instructions for text extraction.
+
+- **PDF/Image** 
+  - Now you can process both image and pdf.
 
 ## 📦 Package Installation
 
@@ -53,7 +56,7 @@ ocr = OCRProcessor(model_name='llama3.2-vision:11b')  # You can use any vision m
 
 # Process an image
 result = ocr.process_image(
-    image_path="path/to/your/image.png",
+    image_path="path/to/your/image.png",#image_path="path/to/your/pdf"
     format_type="markdown",  # Options: markdown, text, json, structured, key_value
     custom_prompt="Extract all text, focusing on dates and names." # Optional custom prompt
 )
