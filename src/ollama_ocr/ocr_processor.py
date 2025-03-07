@@ -7,7 +7,7 @@ from tqdm import tqdm
 import concurrent.futures
 from pathlib import Path
 import cv2
-import fitz  # Import the fitz library (pymupdf)
+import pymupdf  # Import the pymupdf library
 
 class OCRProcessor:
     def __init__(self, model_name: str = "llama3.2-vision:11b", 
@@ -25,18 +25,19 @@ class OCRProcessor:
 
     def _pdf_to_images(self, pdf_path: str) -> List[str]:
         """
-        Convert each page of a PDF to an image using fitz (pymupdf).
+        Convert each page of a PDF to an image using pymupdf.
         Saves each page as a temporary image.
         Returns a list of image paths.
         """
         try:
-            doc = fitz.open(pdf_path)
+            doc = pymupdf.open(pdf_path)
             image_paths = []
             for page_num in range(doc.page_count):
                 page = doc[page_num]
-                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # Increase resolution
-                temp_path = f"{pdf_path}_page{page_num}.png"  # Unique filename for each page
-                pix.save(temp_path)
+                mat = pymupdf.Matrix(2, 2)  # Define the transformation matrix for zoom
+                pix = page.get_pixmap(matrix=mat)  # Render page to an image
+                temp_path = f"{pdf_path}_page{page_num}.png"  # Define output image path
+                pix.save(temp_path)  # Save the image
                 image_paths.append(temp_path)
             doc.close()
             return image_paths
@@ -46,7 +47,7 @@ class OCRProcessor:
     def _preprocess_image(self, image_path: str) -> str:
         """
         Preprocess image before OCR:
-        - Convert PDF to image if needed (using fitz)
+        - Convert PDF to image if needed (using pymupdf)
         - Auto-rotate
         - Enhance contrast
         - Reduce noise

@@ -60,7 +60,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 def get_available_models():
-    return ["llava:7b", "llama3.2-vision:11b","granite3.2-vision", "moondream"]
+    return ["llava:7b", "llama3.2-vision:11b", "granite3.2-vision", "moondream"]
 
 def process_single_image(processor, image_path, format_type, enable_preprocessing, custom_prompt):
     """Process a single image and return the result"""
@@ -69,7 +69,7 @@ def process_single_image(processor, image_path, format_type, enable_preprocessin
             image_path=image_path,
             format_type=format_type,
             preprocess=enable_preprocessing,
-            custom_prompt=custom_prompt  # custom_prompt here
+            custom_prompt=custom_prompt
         )
         return result
     except Exception as e:
@@ -134,8 +134,13 @@ def main():
         # Model info box
         if selected_model == "llava:7b":
             st.info("LLaVA 7B: Efficient vision-language model optimized for real-time processing")
-        else:
+        elif selected_model == "llama3.2-vision:11b":
             st.info("Llama 3.2 Vision: Advanced model with high accuracy for complex text extraction")
+        elif selected_model == "granite3.2-vision":
+            st.info("Granite 3.2 Vision: Robust model for detailed document analysis")
+        elif selected_model == "moondream":
+            st.info("Moondream: Lightweight model designed for edge devices")
+        
     
     # Determine if a custom prompt should be used (if text area is not empty)
     custom_prompt = custom_prompt_input if custom_prompt_input.strip() != "" else None
@@ -144,7 +149,7 @@ def main():
     processor = OCRProcessor(model_name=selected_model, max_workers=max_workers)
 
     # Main content area with tabs
-    tab1, tab2 = st.tabs(["📸 Image Processing", "ℹ️ About"])
+    tab1, tab2 = st.tabs(["📸 File Processing", "ℹ️ About"])
     
     with tab1:
         # File upload area with multiple file support
@@ -168,19 +173,23 @@ def main():
                     image_paths.append(temp_path)
 
                 # Display images in a gallery
-                st.subheader(f"📸 Input Images ({len(uploaded_files)} files)")
+                st.subheader(f"📸 Input File ({len(uploaded_files)} files)")
                 cols = st.columns(min(len(uploaded_files), 4))
                 for idx, uploaded_file in enumerate(uploaded_files):
                     with cols[idx % 4]:
                         try:
-                            image = Image.open(uploaded_file)
-                            st.image(image, use_container_width=True, caption=uploaded_file.name)
-                        except:
-                            st.image(uploaded_file, use_container_width=True, caption=uploaded_file.name)
+                            if uploaded_file.name.lower().endswith('.pdf'):
+                                # Display a placeholder for PDFs
+                                st.image("https://via.placeholder.com/150?text=PDF", caption=uploaded_file.name, use_column_width=True)
+                            else:
+                                image = Image.open(uploaded_file)
+                                st.image(image, caption=uploaded_file.name, use_column_width=True)
+                        except Exception as e:
+                            st.error(f"Error displaying {uploaded_file.name}: {e}")
 
                 # Process button
-                if st.button("🚀 Process Images"):
-                    with st.spinner("Processing images..."):
+                if st.button("🚀 Process File"):
+                    with st.spinner("Processing file..."):
                         if len(image_paths) == 1:
                             # Single image processing
                             result = process_single_image(
@@ -188,7 +197,7 @@ def main():
                                 image_paths[0], 
                                 format_type,
                                 enable_preprocessing,
-                                custom_prompt  # Pass custom_prompt here
+                                custom_prompt
                             )
                             st.subheader("📝 Extracted Text")
                             st.markdown(result)
@@ -257,8 +266,8 @@ def main():
         ### Models:
         - **LLaVA 7B**: Efficient vision-language model for real-time processing
         - **Llama 3.2 Vision**: Advanced model with high accuracy for complex documents
-        - ** Granit 3.2 Vision**: Advanced model with high accuracy for complex documents.
-        - ** Moondream**: Model for edge device.
+        - **Granit 3.2 Vision**: Advanced model with high accuracy for complex documents.
+        - **Moondream**: Model for edge devices.
         """)
 
 if __name__ == "__main__":
