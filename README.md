@@ -4,13 +4,15 @@
 <a href="https://github.com/imanoop7/Ollama-OCR/graphs/contributors"><img src="https://img.shields.io/github/contributors-anon/imanoop7/Ollama-OCR.svg" alt="Contributors"></a>
 # Ollama OCR 🔍
 
-A powerful OCR (Optical Character Recognition) package that uses state-of-the-art vision language models through Ollama to extract text from images and PDF. Available both as a Python package and a Streamlit web application.
+A powerful OCR (Optical Character Recognition) package that uses state-of-the-art vision language models through Ollama to extract text from images. Available both as a Python package and a Streamlit web application.
 
 ## 🌟 Features
 
 - **Multiple Vision Models Support**
   - LLaVA 7B: Efficient vision-language model for real-time processing (LLaVa model can generate wrong output sometimes)
   - Llama 3.2 Vision: Advanced model with high accuracy for complex documents
+  - Granite3.2-vision : A compact and efficient vision-language model, specifically designed for visual document understanding, enabling automated content extraction from tables, charts,    infographics, plots, diagrams, and more.
+  - Moondream2: Small vision language model designed to run efficiently on edge devices.
 
 - **Multiple Output Formats**
   - Markdown: Preserves text formatting with headers and lists
@@ -27,9 +29,6 @@ A powerful OCR (Optical Character Recognition) package that uses state-of-the-ar
 - **Custom Prompts**
   - Override default prompts with custom instructions for text extraction.
 
-- **PDF/Image** 
-  - Now you can process both image and pdf.
-
 ## 📦 Package Installation
 
 ```bash
@@ -43,6 +42,8 @@ pip install ollama-ocr
 
 ```bash
 ollama pull llama3.2-vision:11b
+ollama pull granite3.2-vision
+ollama pull moondream
 ```
 ## Using the Package
 
@@ -56,7 +57,7 @@ ocr = OCRProcessor(model_name='llama3.2-vision:11b')  # You can use any vision m
 
 # Process an image
 result = ocr.process_image(
-    image_path="path/to/your/image.png",#image_path="path/to/your/pdf"
+    image_path="path/to/your/image.png",
     format_type="markdown",  # Options: markdown, text, json, structured, key_value
     custom_prompt="Extract all text, focusing on dates and names." # Optional custom prompt
 )
@@ -90,6 +91,9 @@ print(f"Total images: {batch_results['statistics']['total']}")
 print(f"Successfully processed: {batch_results['statistics']['successful']}")
 print(f"Failed: {batch_results['statistics']['failed']}")
 ```
+
+
+## Error : 
 
 
 

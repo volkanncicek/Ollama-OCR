@@ -60,7 +60,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 def get_available_models():
-    return ["llava:7b", "llama3.2-vision:11b"]
+    return ["llava:7b", "llama3.2-vision:11b","granite3.2-vision", "moondream"]
 
 def process_single_image(processor, image_path, format_type, enable_preprocessing, custom_prompt):
     """Process a single image and return the result"""
@@ -69,7 +69,7 @@ def process_single_image(processor, image_path, format_type, enable_preprocessin
             image_path=image_path,
             format_type=format_type,
             preprocess=enable_preprocessing,
-            custom_prompt=custom_prompt  # Pass custom_prompt here
+            custom_prompt=custom_prompt  # custom_prompt here
         )
         return result
     except Exception as e:
@@ -172,8 +172,11 @@ def main():
                 cols = st.columns(min(len(uploaded_files), 4))
                 for idx, uploaded_file in enumerate(uploaded_files):
                     with cols[idx % 4]:
-                        image = Image.open(uploaded_file)
-                        st.image(image, use_container_width=True, caption=uploaded_file.name)
+                        try:
+                            image = Image.open(uploaded_file)
+                            st.image(image, use_container_width=True, caption=uploaded_file.name)
+                        except:
+                            st.image(uploaded_file, use_container_width=True, caption=uploaded_file.name)
 
                 # Process button
                 if st.button("🚀 Process Images"):
@@ -254,6 +257,8 @@ def main():
         ### Models:
         - **LLaVA 7B**: Efficient vision-language model for real-time processing
         - **Llama 3.2 Vision**: Advanced model with high accuracy for complex documents
+        - ** Granit 3.2 Vision**: Advanced model with high accuracy for complex documents.
+        - ** Moondream**: Model for edge device.
         """)
 
 if __name__ == "__main__":
