@@ -52,14 +52,6 @@ class OCRProcessor:
         - Enhance contrast
         - Reduce noise
         """
-        # Handle PDF files
-        if image_path.lower().endswith('.pdf'):
-            # If it's a PDF, convert all pages to images and return the first one
-            image_paths = self._pdf_to_images(image_path)
-            if image_paths:
-                image_path = image_paths[0]  # Process only the first page for now
-            else:
-                raise ValueError(f"No images found converting PDF {image_path}")
 
         # Read image
         image = cv2.imread(image_path)
@@ -87,15 +79,97 @@ class OCRProcessor:
 
     def process_image(self, image_path: str, format_type: str = "markdown", preprocess: bool = True, custom_prompt: str = None) -> str:
         """
-        Process an image and extract text in the specified format
+        Process an image (or PDF) and extract text in the specified format
 
         Args:
-            image_path: Path to the image file
+            image_path: Path to the image file or PDF file
             format_type: One of ["markdown", "text", "json", "structured", "key_value"]
             preprocess: Whether to apply image preprocessing
             custom_prompt: If provided, this prompt overrides the default based on format_type
         """
         try:
+            # If the input is a PDF, process all pages
+            if image_path.lower().endswith('.pdf'):
+                image_pages = self._pdf_to_images(image_path)
+                print("No. of pages in the PDF", len(image_pages))
+                responses = []
+                for idx, page_file in enumerate(image_pages):
+                    # Process each page with preprocessing if enabled
+                    if preprocess:
+                        preprocessed_path = self._preprocess_image(page_file)
+                    else:
+                        preprocessed_path = page_file
+
+                    image_base64 = self._encode_image(preprocessed_path)
+                    
+                    if custom_prompt and custom_prompt.strip():
+                        prompt = custom_prompt
+                        print("Using custom prompt:", prompt)  # Debug print
+                    else:
+                        prompts = {
+                            "markdown": """Please look at this image and extract all the text content. Format the output in markdown:
+                                - Use headers (# ## ###) for titles and sections
+                                - Use bullet points (-) for lists
+                                - Use proper markdown formatting for emphasis and structure
+                                - Preserve the original text hierarchy and formatting as much as possible""",
+                                                                        
+                                                            "text": """Please look at this image and extract all the text content. 
+                                Provide the output as plain text, maintaining the original layout and line breaks where appropriate.
+                                Include all visible text from the image.""",
+                                                                        
+                                                            "json": """Please look at this image and extract all the text content. Structure the output as JSON with these guidelines:
+                                - Identify different sections or components
+                                - Use appropriate keys for different text elements
+                                - Maintain the hierarchical structure of the content
+                                - Include all visible text from the image""",
+                                                                        
+                                                            "structured": """Please look at this image and extract all the text content, focusing on structural elements:
+                                - Identify and format any tables
+                                - Extract lists and maintain their structure
+                                - Preserve any hierarchical relationships
+                                - Format sections and subsections clearly""",
+                                                                        
+                                                            "key_value": """Please look at this image and extract text that appears in key-value pairs:
+                                - Look for labels and their associated values
+                                - Extract form fields and their contents
+                                - Identify any paired information
+                                - Present each pair on a new line as 'key: value'"""
+                        }
+                        prompt = prompts.get(format_type, prompts["text"])
+                        print("Using default prompt:", prompt)  # Debug print
+                    
+                    # Prepare the request payload
+                    payload = {
+                        "model": self.model_name,
+                        "prompt": prompt,
+                        "stream": False,
+                        "images": [image_base64]
+                    }
+                    
+                    # Make the API call to Ollama
+                    response = requests.post(self.base_url, json=payload)
+                    response.raise_for_status()
+                    res = response.json().get("response", "")
+                    print("Page No. Processed", idx)  
+                    # Prefix result with page number
+                    responses.append(f"Page {idx + 1}:\n{res}")
+                    
+                    # Clean up temporary files
+                    if preprocess and preprocessed_path.endswith('_preprocessed.jpg'):
+                        os.remove(preprocessed_path)
+                    if page_file.endswith('.png'):
+                        os.remove(page_file)
+                
+                final_result = "\n".join(responses)
+                if format_type == "json":
+                    try:
+                        json_data = json.loads(final_result)
+                        return json.dumps(json_data, indent=2)
+                    except json.JSONDecodeError:
+                        return final_result
+                return final_result
+
+            # Process non-PDF images as before.
             if preprocess:
                 image_path = self._preprocess_image(image_path)
             
@@ -107,43 +181,36 @@ class OCRProcessor:
 
             if custom_prompt and custom_prompt.strip():
                 prompt = custom_prompt
-                print("Using custom prompt:", prompt)  # Debug print
+                print("Using custom prompt:", prompt)  
             else:
-                # Generic prompt templates for different formats
                 prompts = {
                     "markdown": """Please look at this image and extract all the text content. Format the output in markdown:
-                    - Use headers (# ## ###) for titles and sections
-                    - Use bullet points (-) for lists
-                    - Use proper markdown formatting for emphasis and structure
-                    - Preserve the original text hierarchy and formatting as much as possible""",
-    
-                    "text": """Please look at this image and extract all the text content. 
-                    Provide the output as plain text, maintaining the original layout and line breaks where appropriate.
-                    Include all visible text from the image.""",
-    
-                    "json": """Please look at this image and extract all the text content. Structure the output as JSON with these guidelines:
-                    - Identify different sections or components
-                    - Use appropriate keys for different text elements
-                    - Maintain the hierarchical structure of the content
-                    - Include all visible text from the image""",
-    
-                    "structured": """Please look at this image and extract all the text content, focusing on structural elements:
-                    - Identify and format any tables
-                    - Extract lists and maintain their structure
-                    - Preserve any hierarchical relationships
-                    - Format sections and subsections clearly""",
-    
-                    "key_value": """Please look at this image and extract text that appears in key-value pairs:
-                    - Look for labels and their associated values
-                    - Extract form fields and their contents
-                    - Identify any paired information
-                    - Present each pair on a new line as 'key: value'"""
+                        - Use headers (# ## ###) for titles and sections
+                        - Use bullet points (-) for lists
+                        - Use proper markdown formatting for emphasis and structure
+                        - Preserve the original text hierarchy and formatting as much as possible""",
+                                            "text": """Please look at this image and extract all the text content. 
+                        Provide the output as plain text, maintaining the original layout and line breaks where appropriate.
+                        Include all visible text from the image.""",
+                                            "json": """Please look at this image and extract all the text content. Structure the output as JSON with these guidelines:
+                        - Identify different sections or components
+                        - Use appropriate keys for different text elements
+                        - Maintain the hierarchical structure of the content
+                        - Include all visible text from the image""",
+                                            "structured": """Please look at this image and extract all the text content, focusing on structural elements:
+                        - Identify and format any tables
+                        - Extract lists and maintain their structure
+                        - Preserve any hierarchical relationships
+                        - Format sections and subsections clearly""",
+                                            "key_value": """Please look at this image and extract text that appears in key-value pairs:
+                        - Look for labels and their associated values
+                        - Extract form fields and their contents
+                        - Identify any paired information
+                        - Present each pair on a new line as 'key: value'"""
                 }
-    
                 prompt = prompts.get(format_type, prompts["text"])
                 print("Using default prompt:", prompt)  # Debug print
 
-            # Prepare the request payload
             payload = {
                 "model": self.model_name,
                 "prompt": prompt,
@@ -151,20 +218,16 @@ class OCRProcessor:
                 "images": [image_base64]
             }
 
-            # Make the API call to Ollama
             response = requests.post(self.base_url, json=payload)
-            response.raise_for_status()  # Raise an exception for bad status codes
+            response.raise_for_status()
             
             result = response.json().get("response", "")
             
-            # Clean up the result if needed
             if format_type == "json":
                 try:
-                    # Try to parse and re-format JSON if it's valid
                     json_data = json.loads(result)
                     return json.dumps(json_data, indent=2)
                 except json.JSONDecodeError:
-                    # If JSON parsing fails, return the raw result
                     return result
             
             return result
