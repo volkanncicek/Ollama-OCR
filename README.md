@@ -24,6 +24,7 @@ A powerful OCR (Optical Character Recognition) package that uses state-of-the-ar
   - JSON: Structured data format
   - Structured: Tables and organized data
   - Key-Value Pairs: Extracts labeled information
+  - Table: Extract all tabular data.
 
 - **Batch Processing**
   - Process multiple images in parallel
