@@ -64,7 +64,8 @@ ocr = OCRProcessor(model_name='llama3.2-vision:11b')  # You can use any vision m
 result = ocr.process_image(
     image_path="path/to/your/image.png", # path to your pdf files "path/to/your/file.pdf"
     format_type="markdown",  # Options: markdown, text, json, structured, key_value
-    custom_prompt="Extract all text, focusing on dates and names." # Optional custom prompt
+    custom_prompt="Extract all text, focusing on dates and names.", # Optional custom prompt
+    language="English" # Specify the language of the text (New! 🆕)
 )
 print(result)
 ```
@@ -83,7 +84,8 @@ batch_results = ocr.process_batch(
     format_type="markdown",
     recursive=True,  # Search subdirectories
     preprocess=True,  # Enable image preprocessing
-    custom_prompt="Extract all text, focusing on dates and names." # Optional custom prompt
+    custom_prompt="Extract all text, focusing on dates and names.", # Optional custom prompt
+    language="English" # Specify the language of the text (New! 🆕)
 )
 # Access results
 for file_path, text in batch_results['results'].items():
@@ -113,6 +115,7 @@ print(f"Failed: {batch_results['statistics']['failed']}")
   - Download extracted text
   - Image preview with details
   - Responsive design
+  - Language Selection: Specify the language for better OCR accuracy. (New! 🆕)
 
 1. Clone the repository:
 ```bash
@@ -148,7 +151,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🙏 Acknowledgments
 Built with Ollama
-Powered by LLaMA Vision Models
+Powered by Vision Models
 
 
 ## Star History
