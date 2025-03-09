@@ -8,7 +8,7 @@ import concurrent.futures
 from pathlib import Path
 import cv2
 import pymupdf  # Import the pymupdf library
-import numpy as np  # Import numpy
+import numpy as np
 
 class OCRProcessor:
     def __init__(self, model_name: str = "llama3.2-vision:11b", 
@@ -45,15 +45,15 @@ class OCRProcessor:
         except Exception as e:
             raise ValueError(f"Could not convert PDF to images: {e}")
 
-    def _preprocess_image(self, image_path: str) -> str:
+    def _preprocess_image(self, image_path: str, language: str = "en") -> str:
         """
         Preprocess image before OCR:
         - Convert PDF to image if needed (using pymupdf)
+        - Language-specific preprocessing (if applicable)
         - Auto-rotate
         - Enhance contrast
         - Reduce noise
         """
-
         # Read image
         image = cv2.imread(image_path)
         if image is None:
@@ -69,10 +69,18 @@ class OCRProcessor:
         # Denoise
         denoised = cv2.fastNlMeansDenoising(enhanced)
 
-        # Auto-rotate if needed
-        # Binarize and invert the image
-        thresh = cv2.threshold(denoised, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
-        thresh = cv2.bitwise_not(thresh)
+        # Language-specific thresholding
+        if language.lower() in ["japanese", "chinese", "zh", "korean"]:
+            # For some CJK and similar languages adaptive thresholding may work better
+            thresh = cv2.adaptiveThreshold(
+                denoised, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                cv2.THRESH_BINARY, 11, 2)
+            thresh = cv2.bitwise_not(thresh)
+        else:
+            # Default: Otsu thresholding
+            thresh = cv2.threshold(denoised, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+            thresh = cv2.bitwise_not(thresh)
+
         # Get coordinates of non-zero pixels
         coords = np.column_stack(np.where(thresh > 0))
         # Compute the angle of rotation
@@ -93,7 +101,8 @@ class OCRProcessor:
 
         return preprocessed_path
 
-    def process_image(self, image_path: str, format_type: str = "markdown", preprocess: bool = True, custom_prompt: str = None, language: str = "en") -> str:
+    def process_image(self, image_path: str, format_type: str = "markdown", preprocess: bool = True, 
+                      custom_prompt: str = None, language: str = "en") -> str:
         """
         Process an image (or PDF) and extract text in the specified format
 
@@ -113,12 +122,12 @@ class OCRProcessor:
                 for idx, page_file in enumerate(image_pages):
                     # Process each page with preprocessing if enabled
                     if preprocess:
-                        preprocessed_path = self._preprocess_image(page_file)
+                        preprocessed_path = self._preprocess_image(page_file, language)
                     else:
                         preprocessed_path = page_file
 
                     image_base64 = self._encode_image(preprocessed_path)
-                    
+
                     if custom_prompt and custom_prompt.strip():
                         prompt = custom_prompt
                         print("Using custom prompt:", prompt)  # Debug print
@@ -130,24 +139,24 @@ class OCRProcessor:
                                 - Use bullet points (-) for lists
                                 - Use proper markdown formatting for emphasis and structure
                                 - Preserve the original text hierarchy and formatting as much as possible""",
-                                                                        
+
                             "text": f"""Please look at this image and extract all the text content in {language}.
                                 Provide the output as plain text, maintaining the original layout and line breaks where appropriate.
                                 Include all visible text from the image.""",
-                                                                        
+
                             "json": f"""Please look at this image and extract all the text content in {language}.
                                 Structure the output as JSON with these guidelines:
                                 - Identify different sections or components
                                 - Use appropriate keys for different text elements
                                 - Maintain the hierarchical structure of the content
                                 - Include all visible text from the image""",
-                                                                        
+
                             "structured": f"""Please look at this image and extract all the text content in {language}, focusing on structural elements:
                                 - Identify and format any tables
                                 - Extract lists and maintain their structure
                                 - Preserve any hierarchical relationships
                                 - Format sections and subsections clearly""",
-                                                                        
+
                             "key_value": f"""Please look at this image and extract text that appears in key-value pairs in {language}:
                                 - Look for labels and their associated values
                                 - Extract form fields and their contents
@@ -156,7 +165,7 @@ class OCRProcessor:
                         }
                         prompt = prompts.get(format_type, prompts["text"])
                         print("Using default prompt:", prompt)  # Debug print
-                    
+
                     # Prepare the request payload
                     payload = {
                         "model": self.model_name,
@@ -164,21 +173,21 @@ class OCRProcessor:
                         "stream": False,
                         "images": [image_base64]
                     }
-                    
+
                     # Make the API call to Ollama
                     response = requests.post(self.base_url, json=payload)
                     response.raise_for_status()
                     res = response.json().get("response", "")
-                    print("Page No. Processed", idx)  
+                    print("Page No. Processed", idx)
                     # Prefix result with page number
                     responses.append(f"Page {idx + 1}:\n{res}")
-                    
+
                     # Clean up temporary files
                     if preprocess and preprocessed_path.endswith('_preprocessed.jpg'):
                         os.remove(preprocessed_path)
                     if page_file.endswith('.png'):
                         os.remove(page_file)
-                
+
                 final_result = "\n".join(responses)
                 if format_type == "json":
                     try:
@@ -190,17 +199,17 @@ class OCRProcessor:
 
             # Process non-PDF images as before.
             if preprocess:
-                image_path = self._preprocess_image(image_path)
-            
+                image_path = self._preprocess_image(image_path, language)
+
             image_base64 = self._encode_image(image_path)
-            
+
             # Clean up temporary files
             if image_path.endswith(('_preprocessed.jpg', '_temp.jpg')):
                 os.remove(image_path)
 
             if custom_prompt and custom_prompt.strip():
                 prompt = custom_prompt
-                print("Using custom prompt:", prompt)  
+                print("Using custom prompt:", prompt)
             else:
                 prompts = {
                     "markdown": f"""Please look at this image and extract all the text content in {language}. Format the output in markdown:
@@ -239,16 +248,16 @@ class OCRProcessor:
 
             response = requests.post(self.base_url, json=payload)
             response.raise_for_status()
-            
+
             result = response.json().get("response", "")
-            
+
             if format_type == "json":
                 try:
                     json_data = json.loads(result)
                     return json.dumps(json_data, indent=2)
                 except json.JSONDecodeError:
                     return result
-            
+
             return result
         except Exception as e:
             return f"Error processing image: {str(e)}"
@@ -271,6 +280,7 @@ class OCRProcessor:
             recursive: Whether to search directories recursively
             preprocess: Whether to apply image preprocessing
             custom_prompt: If provided, this prompt overrides the default for each image
+            language: Language code to apply language specific OCR preprocessing
             
         Returns:
             Dictionary with results and statistics
@@ -295,7 +305,7 @@ class OCRProcessor:
         with tqdm(total=len(image_paths), desc="Processing images") as pbar:
             with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                 future_to_path = {
-                    executor.submit(self.process_image, str(path), format_type, preprocess, custom_prompt,language): path
+                    executor.submit(self.process_image, str(path), format_type, preprocess, custom_prompt, language): path
                     for path in image_paths
                 }
                 
