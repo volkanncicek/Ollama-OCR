@@ -62,27 +62,29 @@ st.markdown("""
 def get_available_models():
     return ["llava:7b", "llama3.2-vision:11b", "granite3.2-vision", "moondream"]
 
-def process_single_image(processor, image_path, format_type, enable_preprocessing, custom_prompt):
+def process_single_image(processor, image_path, format_type, enable_preprocessing, custom_prompt, language):
     """Process a single image and return the result"""
     try:
         result = processor.process_image(
             image_path=image_path,
             format_type=format_type,
             preprocess=enable_preprocessing,
-            custom_prompt=custom_prompt
+            custom_prompt=custom_prompt,
+            language=language
         )
         return result
     except Exception as e:
         return f"Error processing image: {str(e)}"
 
-def process_batch_images(processor, image_paths, format_type, enable_preprocessing, custom_prompt):
+def process_batch_images(processor, image_paths, format_type, enable_preprocessing, custom_prompt, language):
     """Process multiple images and return results"""
     try:
         results = processor.process_batch(
             input_path=image_paths,
             format_type=format_type,
             preprocess=enable_preprocessing,
-            custom_prompt=custom_prompt
+            custom_prompt=custom_prompt,
+            language=language
         )
         return results
     except Exception as e:
@@ -113,6 +115,12 @@ def main():
             "📝 Custom Prompt (optional)",
             value="",
             help="Enter a custom prompt to override the default. Leave empty to use the predefined prompt."
+        )
+
+        language = st.text_input(
+            "🌍 Language",
+            value="en",
+            help="Enter the language of the text in the image (e.g., English, Spanish, French)."
         )
 
         max_workers = st.slider(
@@ -197,7 +205,8 @@ def main():
                                 image_paths[0], 
                                 format_type,
                                 enable_preprocessing,
-                                custom_prompt
+                                custom_prompt,
+                                language
                             )
                             st.subheader("📝 Extracted Text")
                             st.markdown(result)
@@ -211,11 +220,13 @@ def main():
                             )
                         else:
                             # Batch processing
-                            results = processor.process_batch(
-                                input_path=image_paths,
-                                format_type=format_type,
-                                preprocess=enable_preprocessing,
-                                custom_prompt=custom_prompt
+                            results = process_batch_images(
+                                processor,
+                                image_paths,
+                                format_type,
+                                enable_preprocessing,
+                                custom_prompt,
+                                language
                             )
                             
                             # Display statistics
