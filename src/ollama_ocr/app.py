@@ -106,7 +106,7 @@ def main():
         
         format_type = st.selectbox(
             "📄 Output Format",
-            ["markdown", "text", "json", "structured", "key_value"],
+            ["markdown", "text", "json", "structured", "key_value", "table"],
             help="Choose how you want the extracted text to be formatted"
         )
         

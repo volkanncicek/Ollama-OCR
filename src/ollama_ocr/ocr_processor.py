@@ -35,8 +35,7 @@ class OCRProcessor:
             image_paths = []
             for page_num in range(doc.page_count):
                 page = doc[page_num]
-                mat = pymupdf.Matrix(2, 2)  # Define the transformation matrix for zoom
-                pix = page.get_pixmap(matrix=mat)  # Render page to an image
+                pix = page.get_pixmap()  # Render page to an image
                 temp_path = f"{pdf_path}_page{page_num}.png"  # Define output image path
                 pix.save(temp_path)  # Save the image
                 image_paths.append(temp_path)
@@ -50,7 +49,6 @@ class OCRProcessor:
         Preprocess image before OCR:
         - Convert PDF to image if needed (using pymupdf)
         - Language-specific preprocessing (if applicable)
-        - Auto-rotate
         - Enhance contrast
         - Reduce noise
         """
@@ -81,23 +79,9 @@ class OCRProcessor:
             thresh = cv2.threshold(denoised, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
             thresh = cv2.bitwise_not(thresh)
 
-        # Get coordinates of non-zero pixels
-        coords = np.column_stack(np.where(thresh > 0))
-        # Compute the angle of rotation
-        angle = cv2.minAreaRect(coords)[-1]
-        if angle < -45:
-            angle = -(90 + angle)
-        else:
-            angle = -angle
-        # Rotate the image to deskew
-        (h, w) = denoised.shape[:2]
-        center = (w // 2, h // 2)
-        M = cv2.getRotationMatrix2D(center, angle, 1.0)
-        rotated = cv2.warpAffine(denoised, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
-
         # Save preprocessed image
         preprocessed_path = f"{image_path}_preprocessed.jpg"
-        cv2.imwrite(preprocessed_path, rotated)
+        cv2.imwrite(preprocessed_path, thresh)
 
         return preprocessed_path
 
@@ -133,35 +117,53 @@ class OCRProcessor:
                         print("Using custom prompt:", prompt)  # Debug print
                     else:
                         prompts = {
-                            "markdown": f"""Please look at this image and extract all the text content in {language}.
+                            "markdown": f"""Extract all text content from this image in {language} **exactly as it appears**, without modification, summarization, or omission.
                                 Format the output in markdown:
-                                - Use headers (# ## ###) for titles and sections
-                                - Use bullet points (-) for lists
-                                - Use proper markdown formatting for emphasis and structure
-                                - Preserve the original text hierarchy and formatting as much as possible""",
+                                - Use headers (#, ##, ###) **only if they appear in the image**
+                                - Preserve original lists (-, *, numbered lists) as they are
+                                - Maintain all text formatting (bold, italics, underlines) exactly as seen
+                                - **Do not add, interpret, or restructure any content**
+                            """,
+                            "text": f"""Extract all visible text from this image in {language} **without any changes**.
+                                - **Do not summarize, paraphrase, or infer missing text.**
+                                - Retain all spacing, punctuation, and formatting exactly as in the image.
+                                - If text is unclear or partially visible, extract as much as possible without guessing.
+                                - **Include all text, even if it seems irrelevant or repeated.** 
+                                """,
 
-                            "text": f"""Please look at this image and extract all the text content in {language}.
-                                Provide the output as plain text, maintaining the original layout and line breaks where appropriate.
-                                Include all visible text from the image.""",
 
-                            "json": f"""Please look at this image and extract all the text content in {language}.
-                                Structure the output as JSON with these guidelines:
-                                - Identify different sections or components
-                                - Use appropriate keys for different text elements
-                                - Maintain the hierarchical structure of the content
-                                - Include all visible text from the image""",
+                           "json": f"""Extract all text from this image in {language} and format it as JSON, **strictly preserving** the structure.
+                                - **Do not summarize, add, or modify any text.**
+                                - Maintain hierarchical sections and subsections as they appear.
+                                - Use keys that reflect the document's actual structure (e.g., "title", "body", "footer").
+                                - Include all text, even if fragmented, blurry, or unclear.
+                                """,
 
-                            "structured": f"""Please look at this image and extract all the text content in {language}, focusing on structural elements:
-                                - Identify and format any tables
-                                - Extract lists and maintain their structure
-                                - Preserve any hierarchical relationships
-                                - Format sections and subsections clearly""",
 
-                            "key_value": f"""Please look at this image and extract text that appears in key-value pairs in {language}:
-                                - Look for labels and their associated values
-                                - Extract form fields and their contents
-                                - Identify any paired information
-                                - Present each pair on a new line as 'key: value'"""
+                            "structured": f"""Extract all text from this image in {language}, **ensuring complete structural accuracy**:
+                                - Identify and format tables **without altering content**.
+                                - Preserve list structures (bulleted, numbered) **exactly as shown**.
+                                - Maintain all section headings, indents, and alignments.
+                                - **Do not add, infer, or restructure the content in any way.**
+                                """,
+
+
+                           "key_value": f"""Extract all key-value pairs from this image in {language} **exactly as they appear**:
+                                - Identify and extract labels and their corresponding values without modification.
+                                - Maintain the exact wording, punctuation, and order.
+                                - Format each pair as 'key: value' **only if clearly structured that way in the image**.
+                                - **Do not infer missing values or add any extra text.**
+                                """,
+
+                            "table": f"""Extract all tabular data from this image in {language} **exactly as it appears**, without modification, summarization, or omission.
+                                - **Preserve the table structure** (rows, columns, headers) as closely as possible.
+                                - **Do not add missing values or infer content**—if a cell is empty, leave it empty.
+                                - Maintain all numerical, textual, and special character formatting.
+                                - If the table contains merged cells, indicate them clearly without altering their meaning.
+                                - Output the table in a structured format such as Markdown, CSV, or JSON, based on the intended use.
+                                """,
+
+
                         }
                         prompt = prompts.get(format_type, prompts["text"])
                         print("Using default prompt:", prompt)  # Debug print
@@ -212,29 +214,51 @@ class OCRProcessor:
                 print("Using custom prompt:", prompt)
             else:
                 prompts = {
-                    "markdown": f"""Please look at this image and extract all the text content in {language}. Format the output in markdown:
-                        - Use headers (# ## ###) for titles and sections
-                        - Use bullet points (-) for lists
-                        - Use proper markdown formatting for emphasis and structure
-                        - Preserve the original text hierarchy and formatting as much as possible""",
-                    "text": f"""Please look at this image and extract all the text content in {language}.
-                        Provide the output as plain text, maintaining the original layout and line breaks where appropriate.
-                        Include all visible text from the image.""",
-                    "json": f"""Please look at this image and extract all the text content in {language}. Structure the output as JSON with these guidelines:
-                        - Identify different sections or components
-                        - Use appropriate keys for different text elements
-                        - Maintain the hierarchical structure of the content
-                        - Include all visible text from the image""",
-                    "structured": f"""Please look at this image and extract all the text content in {language}, focusing on structural elements:
-                        - Identify and format any tables
-                        - Extract lists and maintain their structure
-                        - Preserve any hierarchical relationships
-                        - Format sections and subsections clearly""",
-                    "key_value": f"""Please look at this image and extract text that appears in key-value pairs in {language}:
-                        - Look for labels and their associated values
-                        - Extract form fields and their contents
-                        - Identify any paired information
-                        - Present each pair on a new line as 'key: value'"""
+                            "markdown": f"""Extract all text content from this image in {language} **exactly as it appears**, without modification, summarization, or omission.
+                                Format the output in markdown:
+                                - Use headers (#, ##, ###) **only if they appear in the image**
+                                - Preserve original lists (-, *, numbered lists) as they are
+                                - Maintain all text formatting (bold, italics, underlines) exactly as seen
+                                - **Do not add, interpret, or restructure any content**
+                            """,
+                            "text": f"""Extract all visible text from this image in {language} **without any changes**.
+                                - **Do not summarize, paraphrase, or infer missing text.**
+                                - Retain all spacing, punctuation, and formatting exactly as in the image.
+                                - If text is unclear or partially visible, extract as much as possible without guessing.
+                                - **Include all text, even if it seems irrelevant or repeated.** 
+                                """,
+
+
+                           "json": f"""Extract all text from this image in {language} and format it as JSON, **strictly preserving** the structure.
+                                - **Do not summarize, add, or modify any text.**
+                                - Maintain hierarchical sections and subsections as they appear.
+                                - Use keys that reflect the document's actual structure (e.g., "title", "body", "footer").
+                                - Include all text, even if fragmented, blurry, or unclear.
+                                """,
+
+
+                            "structured": f"""Extract all text from this image in {language}, **ensuring complete structural accuracy**:
+                                - Identify and format tables **without altering content**.
+                                - Preserve list structures (bulleted, numbered) **exactly as shown**.
+                                - Maintain all section headings, indents, and alignments.
+                                - **Do not add, infer, or restructure the content in any way.**
+                                """,
+
+
+                           "key_value": f"""Extract all key-value pairs from this image in {language} **exactly as they appear**:
+                                - Identify and extract labels and their corresponding values without modification.
+                                - Maintain the exact wording, punctuation, and order.
+                                - Format each pair as 'key: value' **only if clearly structured that way in the image**.
+                                - **Do not infer missing values or add any extra text.**
+                                """,
+
+                            "table": f"""Extract all tabular data from this image in {language} **exactly as it appears**, without modification, summarization, or omission.
+                                - **Preserve the table structure** (rows, columns, headers) as closely as possible.
+                                - **Do not add missing values or infer content**—if a cell is empty, leave it empty.
+                                - Maintain all numerical, textual, and special character formatting.
+                                - If the table contains merged cells, indicate them clearly without altering their meaning.
+                                - Output the table in a structured format such as Markdown, CSV, or JSON, based on the intended use.
+                                """,
                 }
                 prompt = prompts.get(format_type, prompts["text"])
                 print("Using default prompt:", prompt)  # Debug print
