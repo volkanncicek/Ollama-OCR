@@ -107,6 +107,7 @@ print(f"Failed: {batch_results['statistics']['failed']}")
 3. **JSON Format**: The output is a JSON object containing the extracted text from the image.
 4. **Structured Format**: The output is a structured object containing the extracted text from the image.
 5. **Key-Value Format**: The output is a dictionary containing the extracted text from the image.
+6. **Table Format**: Extract all tabular data.
 
 -----
 ## 🌐 Streamlit Web Application(supports batch processing)
