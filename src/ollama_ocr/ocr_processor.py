@@ -8,6 +8,7 @@ import concurrent.futures
 from pathlib import Path
 import cv2
 import pymupdf  # Import the pymupdf library
+import numpy as np  # Import numpy
 
 class OCRProcessor:
     def __init__(self, model_name: str = "llama3.2-vision:11b", 
@@ -69,23 +70,39 @@ class OCRProcessor:
         denoised = cv2.fastNlMeansDenoising(enhanced)
 
         # Auto-rotate if needed
-        # TODO: Implement rotation detection and correction
+        # Binarize and invert the image
+        thresh = cv2.threshold(denoised, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+        thresh = cv2.bitwise_not(thresh)
+        # Get coordinates of non-zero pixels
+        coords = np.column_stack(np.where(thresh > 0))
+        # Compute the angle of rotation
+        angle = cv2.minAreaRect(coords)[-1]
+        if angle < -45:
+            angle = -(90 + angle)
+        else:
+            angle = -angle
+        # Rotate the image to deskew
+        (h, w) = denoised.shape[:2]
+        center = (w // 2, h // 2)
+        M = cv2.getRotationMatrix2D(center, angle, 1.0)
+        rotated = cv2.warpAffine(denoised, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
 
         # Save preprocessed image
         preprocessed_path = f"{image_path}_preprocessed.jpg"
-        cv2.imwrite(preprocessed_path, denoised)
+        cv2.imwrite(preprocessed_path, rotated)
 
         return preprocessed_path
 
-    def process_image(self, image_path: str, format_type: str = "markdown", preprocess: bool = True, custom_prompt: str = None) -> str:
+    def process_image(self, image_path: str, format_type: str = "markdown", preprocess: bool = True, custom_prompt: str = None, language: str = "en") -> str:
         """
         Process an image (or PDF) and extract text in the specified format
 
         Args:
             image_path: Path to the image file or PDF file
-            format_type: One of ["markdown", "text", "json", "structured", "key_value"]
+            format_type: One of ["markdown", "text", "json", "structured", "key_value","custom"]
             preprocess: Whether to apply image preprocessing
             custom_prompt: If provided, this prompt overrides the default based on format_type
+            language: Language code to apply language specific OCR preprocessing
         """
         try:
             # If the input is a PDF, process all pages
@@ -107,29 +124,31 @@ class OCRProcessor:
                         print("Using custom prompt:", prompt)  # Debug print
                     else:
                         prompts = {
-                            "markdown": """Please look at this image and extract all the text content. Format the output in markdown:
+                            "markdown": f"""Please look at this image and extract all the text content in {language}.
+                                Format the output in markdown:
                                 - Use headers (# ## ###) for titles and sections
                                 - Use bullet points (-) for lists
                                 - Use proper markdown formatting for emphasis and structure
                                 - Preserve the original text hierarchy and formatting as much as possible""",
                                                                         
-                                                            "text": """Please look at this image and extract all the text content. 
+                            "text": f"""Please look at this image and extract all the text content in {language}.
                                 Provide the output as plain text, maintaining the original layout and line breaks where appropriate.
                                 Include all visible text from the image.""",
                                                                         
-                                                            "json": """Please look at this image and extract all the text content. Structure the output as JSON with these guidelines:
+                            "json": f"""Please look at this image and extract all the text content in {language}.
+                                Structure the output as JSON with these guidelines:
                                 - Identify different sections or components
                                 - Use appropriate keys for different text elements
                                 - Maintain the hierarchical structure of the content
                                 - Include all visible text from the image""",
                                                                         
-                                                            "structured": """Please look at this image and extract all the text content, focusing on structural elements:
+                            "structured": f"""Please look at this image and extract all the text content in {language}, focusing on structural elements:
                                 - Identify and format any tables
                                 - Extract lists and maintain their structure
                                 - Preserve any hierarchical relationships
                                 - Format sections and subsections clearly""",
                                                                         
-                                                            "key_value": """Please look at this image and extract text that appears in key-value pairs:
+                            "key_value": f"""Please look at this image and extract text that appears in key-value pairs in {language}:
                                 - Look for labels and their associated values
                                 - Extract form fields and their contents
                                 - Identify any paired information
@@ -184,25 +203,25 @@ class OCRProcessor:
                 print("Using custom prompt:", prompt)  
             else:
                 prompts = {
-                    "markdown": """Please look at this image and extract all the text content. Format the output in markdown:
+                    "markdown": f"""Please look at this image and extract all the text content in {language}. Format the output in markdown:
                         - Use headers (# ## ###) for titles and sections
                         - Use bullet points (-) for lists
                         - Use proper markdown formatting for emphasis and structure
                         - Preserve the original text hierarchy and formatting as much as possible""",
-                                            "text": """Please look at this image and extract all the text content. 
+                    "text": f"""Please look at this image and extract all the text content in {language}.
                         Provide the output as plain text, maintaining the original layout and line breaks where appropriate.
                         Include all visible text from the image.""",
-                                            "json": """Please look at this image and extract all the text content. Structure the output as JSON with these guidelines:
+                    "json": f"""Please look at this image and extract all the text content in {language}. Structure the output as JSON with these guidelines:
                         - Identify different sections or components
                         - Use appropriate keys for different text elements
                         - Maintain the hierarchical structure of the content
                         - Include all visible text from the image""",
-                                            "structured": """Please look at this image and extract all the text content, focusing on structural elements:
+                    "structured": f"""Please look at this image and extract all the text content in {language}, focusing on structural elements:
                         - Identify and format any tables
                         - Extract lists and maintain their structure
                         - Preserve any hierarchical relationships
                         - Format sections and subsections clearly""",
-                                            "key_value": """Please look at this image and extract text that appears in key-value pairs:
+                    "key_value": f"""Please look at this image and extract text that appears in key-value pairs in {language}:
                         - Look for labels and their associated values
                         - Extract form fields and their contents
                         - Identify any paired information
@@ -240,7 +259,8 @@ class OCRProcessor:
         format_type: str = "markdown",
         recursive: bool = False,
         preprocess: bool = True,
-        custom_prompt: str = None
+        custom_prompt: str = None,
+        language: str = "en"
     ) -> Dict[str, Any]:
         """
         Process multiple images in batch
@@ -275,7 +295,7 @@ class OCRProcessor:
         with tqdm(total=len(image_paths), desc="Processing images") as pbar:
             with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                 future_to_path = {
-                    executor.submit(self.process_image, str(path), format_type, preprocess, custom_prompt): path
+                    executor.submit(self.process_image, str(path), format_type, preprocess, custom_prompt,language): path
                     for path in image_paths
                 }
                 
