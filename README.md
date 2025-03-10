@@ -158,5 +158,11 @@ Powered by Vision Models
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=imanoop7/Ollama-OCR&type=Date)](https://star-history.com/#imanoop7/Ollama-OCR&Date)
+<a href="https://www.star-history.com/#imanoop7/Ollama-OCR&Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=imanoop7/Ollama-OCR&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=imanoop7/Ollama-OCR&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=imanoop7/Ollama-OCR&type=Date" />
+ </picture>
+</a>
 
