@@ -13,10 +13,11 @@ A powerful OCR (Optical Character Recognition) package that uses state-of-the-ar
 ### Supports PDF and Images (New! 🆕)
 
 - **Multiple Vision Models Support**
-  - LLaVA 7B: Efficient vision-language model for real-time processing (LLaVa model can generate wrong output sometimes)
+  - [LLaVA](https://ollama.com/library/llava): Efficient vision-language model for real-time processing (LLaVa model can generate wrong output sometimes)
   - Llama 3.2 Vision: Advanced model with high accuracy for complex documents
-  - Granite3.2-vision: A compact and efficient vision-language model, specifically designed for visual document understanding, enabling automated content extraction from tables, charts,    infographics, plots, diagrams, and more.
-  - Moondream: Small vision language model designed to run efficiently on edge devices.
+  - [Granite3.2-vision](https://ollama.com/library/granite3.2-vision): A compact and efficient vision-language model, specifically designed for visual document understanding, enabling automated content extraction from tables, charts,    infographics, plots, diagrams, and more.
+  - [Moondream](https://ollama.com/library/moondream): Small vision language model designed to run efficiently on edge devices.
+  - [Minicpm-v](https://ollama.com/library/minicpm-v): MiniCPM-V 2.6 can process images with any aspect ratio and up to 1.8 million pixels (e.g., 1344x1344).
 
 - **Multiple Output Formats**
   - Markdown: Preserves text formatting with headers and lists
@@ -49,6 +50,7 @@ pip install ollama-ocr
 ollama pull llama3.2-vision:11b
 ollama pull granite3.2-vision
 ollama pull moondream
+ollama pull minicpm-v
 ```
 ## Using the Package
 
@@ -107,6 +109,7 @@ print(f"Failed: {batch_results['statistics']['failed']}")
 3. **JSON Format**: The output is a JSON object containing the extracted text from the image.
 4. **Structured Format**: The output is a structured object containing the extracted text from the image.
 5. **Key-Value Format**: The output is a dictionary containing the extracted text from the image.
+6. **Table Format**: Extract all tabular data.
 
 -----
 ## 🌐 Streamlit Web Application(supports batch processing)
