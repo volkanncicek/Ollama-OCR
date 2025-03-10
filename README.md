@@ -58,7 +58,7 @@ ollama pull moondream
 from ollama_ocr import OCRProcessor
 
 # Initialize OCR processor
-ocr = OCRProcessor(model_name='llama3.2-vision:11b')  # You can use any vision model available on Ollama
+ocr = OCRProcessor(model_name='llama3.2-vision:11b', base_url="http://host.docker.internal:11434/api/generate")  # You can use any vision model available on Ollama
 # you can pass your custom ollama api
 
 # Process an image
