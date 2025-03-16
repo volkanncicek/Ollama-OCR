@@ -60,7 +60,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 def get_available_models():
-    return ["llava:7b", "llama3.2-vision:11b", "granite3.2-vision", "moondream"]
+    return ["llava:7b", "llama3.2-vision:11b", "granite3.2-vision", "moondream","minicpm-v"]
 
 def process_single_image(processor, image_path, format_type, enable_preprocessing, custom_prompt, language):
     """Process a single image and return the result"""
