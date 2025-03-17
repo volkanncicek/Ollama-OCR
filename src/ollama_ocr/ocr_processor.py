@@ -7,7 +7,7 @@ from tqdm import tqdm
 import concurrent.futures
 from pathlib import Path
 import cv2
-import pymupdf  # Import the pymupdf library
+import pymupdf 
 import numpy as np
 
 class OCRProcessor:

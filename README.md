@@ -139,9 +139,11 @@ cd src/ollama_ocr
 streamlit run app.py
 ```
 
-## 📒 Notebooks Examples
-- [Ollama OCR on Colab](ollama_ocr_on_colab.ipynb): Run Ollama OCR in Google Colab.
-- [Example Notebook](example.ipynb): Example usage of Ollama OCR.
+## 📒 Example Notebooks 
+- [Ollama OCR on Colab](example_notebooks\ollama_ocr_on_colab.ipynb): How to use Ollama-OCR on Google Colab.
+- [Example Notebook](example_notebooks\example.ipynb): Example usage of Ollama OCR.
+- [Ollama OCR with Autogen](example_notebooks\ollama-ocr-with-autogen.ipynb): Use Ollama-OCR with autogen.
+- [Ollama OCR with LangGraph](example_notebooks\ollama-ocr-with-langgraph.ipynb): Use Ollama-OCR with LangGraph.
 
 
 ## Examples Output
