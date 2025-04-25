@@ -27,7 +27,7 @@ class OCRProcessor:
         with open(image_path, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode("utf-8")
 
-    def _pdf_to_images(self, pdf_path: str) -> List[str]:
+    def _pdf_to_images(self, pdf_path: str, dpi: int = 300) -> List[str]:
         """
         Convert each page of a PDF to an image using pymupdf.
         Saves each page as a temporary image.
@@ -36,10 +36,14 @@ class OCRProcessor:
         try:
             doc = pymupdf.open(pdf_path)
             image_paths = []
+            pdf_base = Path(pdf_path).stem  # Get PDF filename without extension
+            output_dir = Path(pdf_path).parent
+
             for page_num in range(doc.page_count):
                 page = doc[page_num]
-                pix = page.get_pixmap()  # Render page to an image
-                temp_path = f"{pdf_path}_page{page_num}.png"  # Define output image path
+                # Correct API usage for PyMuPDF
+                pix = page.get_pixmap(matrix=pymupdf.Matrix(dpi / 72, dpi / 72))
+                temp_path = str(output_dir / f"{pdf_base}_page{page_num}.png")
                 pix.save(temp_path)  # Save the image
                 image_paths.append(temp_path)
             doc.close()
@@ -85,7 +89,10 @@ class OCRProcessor:
             thresh = cv2.bitwise_not(thresh)
 
         # Save preprocessed image
-        preprocessed_path = f"{image_path}_preprocessed.jpg"
+        image_path_obj = Path(image_path)
+        preprocessed_path = str(
+            image_path_obj.parent / f"{image_path_obj.stem}_preprocessed.jpg"
+        )
         cv2.imwrite(preprocessed_path, thresh)
 
         return preprocessed_path
@@ -163,7 +170,6 @@ class OCRProcessor:
             }
 
             response = requests.post(self.base_url, json=payload)
-            print(response.json())
             response.raise_for_status()
 
             result = response.json().get("response", "")
@@ -212,7 +218,7 @@ class OCRProcessor:
         if input_file_path.lower().endswith(".pdf"):
             try:
                 image_pages = self._pdf_to_images(input_file_path, dpi=dpi)
-                print("No. of pages in the PDF", len(image_pages))
+                print(f"Processing PDF with {len(image_pages)} pages")
                 responses = []
                 for idx, page_file in enumerate(image_pages):
                     result = self._process_image(
@@ -222,8 +228,16 @@ class OCRProcessor:
 
                 # clean up temporary files created by pdf conversion
                 try:
-                    if page_file.endswith(".png"):
-                        os.remove(page_file)
+                    for page_file in image_pages:
+                        if os.path.exists(page_file):
+                            os.remove(page_file)
+                        # Also try to remove any preprocessed version
+                        preprocessed_file = str(
+                            Path(page_file).parent
+                            / f"{Path(page_file).stem}_preprocessed.jpg"
+                        )
+                        if os.path.exists(preprocessed_file):
+                            os.remove(preprocessed_file)
                 except Exception as e:
                     print(f"Warning: Failed to clean up temporary file: {e}")
 
