@@ -2,7 +2,7 @@
 <a href="https://github.com/imanoop7/Ollama-OCR/graphs/commit-activity"><img src="https://img.shields.io/github/commit-activity/m/imanoop7/Ollama-OCR.svg" alt="Commit Activity"></a>
 <a href="https://github.com/imanoop7/Ollama-OCR"><img src="https://img.shields.io/github/last-commit/imanoop7/Ollama-OCR.svg" alt="Last Commit"></a>
 
-![Ollama OCR Logo](logo_file.jpg)
+![Ollama OCR Logo](assets/logo_file.jpg)
 
 <h1 align="center">Ollama OCR</h1>
 
@@ -148,12 +148,12 @@ streamlit run app.py
 
 ## Examples Output
 ### Input Image
-![Input Image](input/img.png)
+![Input Image](assets/input/img.png)
 
 
 ### Sample Output
-![Sample Output](output/image.png)
-![Sample Output](output/markdown.png)
+![Sample Output](assets/output/image.png)
+![Sample Output](assets/output/markdown.png)
 
 
 ## 📄 License
