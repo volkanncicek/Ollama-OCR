@@ -3,10 +3,9 @@ import concurrent.futures
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 import cv2
-import numpy as np
 import pymupdf
 import requests
 from tqdm import tqdm
@@ -135,86 +134,19 @@ class OCRProcessor:
         prompt = prompts.get(format_type, prompts["text"])
         return prompt
 
-    def process_image(
+    def _process_image(
         self,
         image_path: str,
         format_type: str = "markdown",
         preprocess: bool = True,
-        custom_prompt: str = None,
+        custom_prompt: Optional[str] = None,
         language: str = "en",
     ) -> str:
-        """
-        Process an image (or PDF) and extract text in the specified format
-
-        Args:
-            image_path: Path to the image file or PDF file
-            format_type: One of ["markdown", "text", "json", "structured", "key_value","custom"]
-            preprocess: Whether to apply image preprocessing
-            custom_prompt: If provided, this prompt overrides the default based on format_type
-            language: Language code to apply language specific OCR preprocessing
-        """
         try:
-            # If the input is a PDF, process all pages
-            if image_path.lower().endswith(".pdf"):
-                image_pages = self._pdf_to_images(image_path)
-                print("No. of pages in the PDF", len(image_pages))
-                responses = []
-                for idx, page_file in enumerate(image_pages):
-                    # Process each page with preprocessing if enabled
-                    if preprocess:
-                        preprocessed_path = self._preprocess_image(page_file, language)
-                    else:
-                        preprocessed_path = page_file
-
-                    image_base64 = self._encode_image(preprocessed_path)
-
-                    if custom_prompt and custom_prompt.strip():
-                        prompt = custom_prompt
-                        print("Using custom prompt:", prompt)  # Debug print
-                    else:
-                        prompt = self._get_default_prompt(format_type, language)
-                        print("Using default prompt:", prompt)  # Debug print
-
-                    # Prepare the request payload
-                    payload = {
-                        "model": self.model_name,
-                        "prompt": prompt,
-                        "stream": False,
-                        "images": [image_base64],
-                    }
-
-                    # Make the API call to Ollama
-                    response = requests.post(self.base_url, json=payload)
-                    response.raise_for_status()
-                    res = response.json().get("response", "")
-                    print("Page No. Processed", idx)
-                    # Prefix result with page number
-                    responses.append(f"Page {idx + 1}:\n{res}")
-
-                    # Clean up temporary files
-                    if preprocess and preprocessed_path.endswith("_preprocessed.jpg"):
-                        os.remove(preprocessed_path)
-                    if page_file.endswith(".png"):
-                        os.remove(page_file)
-
-                final_result = "\n".join(responses)
-                if format_type == "json":
-                    try:
-                        json_data = json.loads(final_result)
-                        return json.dumps(json_data, indent=2)
-                    except json.JSONDecodeError:
-                        return final_result
-                return final_result
-
-            # Process non-PDF images as before.
             if preprocess:
                 image_path = self._preprocess_image(image_path, language)
 
             image_base64 = self._encode_image(image_path)
-
-            # Clean up temporary files
-            if image_path.endswith(("_preprocessed.jpg", "_temp.jpg")):
-                os.remove(image_path)
 
             if custom_prompt and custom_prompt.strip():
                 prompt = custom_prompt
@@ -231,6 +163,7 @@ class OCRProcessor:
             }
 
             response = requests.post(self.base_url, json=payload)
+            print(response.json())
             response.raise_for_status()
 
             result = response.json().get("response", "")
@@ -240,11 +173,69 @@ class OCRProcessor:
                     json_data = json.loads(result)
                     return json.dumps(json_data, indent=2)
                 except json.JSONDecodeError:
-                    return result
+                    pass
 
             return result
+
         except Exception as e:
             return f"Error processing image: {str(e)}"
+        finally:
+            try:
+                if preprocess and image_path.endswith(
+                    ("_preprocessed.jpg", "_temp.jpg")
+                ):
+                    os.remove(image_path)
+            except Exception as e:
+                print(f"Warning: Failed to clean up temporary file: {e}")
+
+    def process_file(
+        self,
+        input_file_path: str,
+        format_type: str = "markdown",
+        preprocess: bool = True,
+        custom_prompt: Optional[str] = None,
+        language: str = "en",
+        dpi: int = 300,
+    ) -> str:
+        """
+        Process an image or PDF file and extract text in the specified format
+
+        Args:
+            input_file_path: Path to the image file or PDF file
+            format_type: One of ["markdown", "text", "json", "structured", "key_value","custom"]
+            preprocess: Whether to apply image preprocessing
+            custom_prompt: If provided, this prompt overrides the default based on format_type
+            language: Language code to apply language specific OCR preprocessing
+            dpi: Resolution for PDF rendering (higher values produce better quality but larger images)
+        """
+        # If the input is a PDF, process all pages
+        if input_file_path.lower().endswith(".pdf"):
+            try:
+                image_pages = self._pdf_to_images(input_file_path, dpi=dpi)
+                print("No. of pages in the PDF", len(image_pages))
+                responses = []
+                for idx, page_file in enumerate(image_pages):
+                    result = self._process_image(
+                        page_file, format_type, preprocess, custom_prompt, language
+                    )
+                    responses.append(f"Page {idx + 1}:\n{result}")
+
+                # clean up temporary files created by pdf conversion
+                try:
+                    if page_file.endswith(".png"):
+                        os.remove(page_file)
+                except Exception as e:
+                    print(f"Warning: Failed to clean up temporary file: {e}")
+
+                final_result = "\n".join(responses)
+                return final_result
+            except Exception as e:
+                return f"Error processing PDF: {str(e)}"
+
+        else:
+            return self._process_image(
+                input_file_path, format_type, preprocess, custom_prompt, language
+            )
 
     def process_batch(
         self,
@@ -252,7 +243,7 @@ class OCRProcessor:
         format_type: str = "markdown",
         recursive: bool = False,
         preprocess: bool = True,
-        custom_prompt: str = None,
+        custom_prompt: Optional[str] = None,
         language: str = "en",
     ) -> Dict[str, Any]:
         """
@@ -292,12 +283,12 @@ class OCRProcessor:
             ) as executor:
                 future_to_path = {
                     executor.submit(
-                        self.process_image,
-                        str(path),
-                        format_type,
-                        preprocess,
-                        custom_prompt,
-                        language,
+                        self.process_file,
+                        input_file_path=str(path),
+                        format_type=format_type,
+                        preprocess=preprocess,
+                        custom_prompt=custom_prompt,
+                        language=language,
                     ): path
                     for path in image_paths
                 }
