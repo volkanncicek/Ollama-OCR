@@ -1,20 +1,22 @@
+import json
+import os
+import tempfile
+
 import streamlit as st
 from ocr_processor import OCRProcessor
-import tempfile
-import os
 from PIL import Image
-import json
 
 # Page configuration
 st.set_page_config(
     page_title="OCR with Ollama",
     page_icon="🔍",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
 # Custom CSS for better UI
-st.markdown("""
+st.markdown(
+    """
     <style>
     .stApp {
         max-width: 100%;
@@ -57,12 +59,24 @@ st.markdown("""
         background: white;
     }
     </style>
-    """, unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True,
+)
+
 
 def get_available_models():
-    return ["llava:7b", "llama3.2-vision:11b", "granite3.2-vision", "moondream","minicpm-v"]
+    return [
+        "llava:7b",
+        "llama3.2-vision:11b",
+        "granite3.2-vision",
+        "moondream",
+        "minicpm-v",
+    ]
 
-def process_single_image(processor, image_path, format_type, enable_preprocessing, custom_prompt, language):
+
+def process_single_image(
+    processor, image_path, format_type, enable_preprocessing, custom_prompt, language
+):
     """Process a single image and return the result"""
     try:
         result = processor.process_image(
@@ -70,13 +84,16 @@ def process_single_image(processor, image_path, format_type, enable_preprocessin
             format_type=format_type,
             preprocess=enable_preprocessing,
             custom_prompt=custom_prompt,
-            language=language
+            language=language,
         )
         return result
     except Exception as e:
         return f"Error processing image: {str(e)}"
 
-def process_batch_images(processor, image_paths, format_type, enable_preprocessing, custom_prompt, language):
+
+def process_batch_images(
+    processor, image_paths, format_type, enable_preprocessing, custom_prompt, language
+):
     """Process multiple images and return results"""
     try:
         results = processor.process_batch(
@@ -84,43 +101,47 @@ def process_batch_images(processor, image_paths, format_type, enable_preprocessi
             format_type=format_type,
             preprocess=enable_preprocessing,
             custom_prompt=custom_prompt,
-            language=language
+            language=language,
         )
         return results
     except Exception as e:
         return {"error": str(e)}
 
+
 def main():
     st.title("🔍 Vision OCR Lab")
-    st.markdown("<p style='text-align: center; color: #666;'>Powered by Ollama Vision Models</p>", unsafe_allow_html=True)
+    st.markdown(
+        "<p style='text-align: center; color: #666;'>Powered by Ollama Vision Models</p>",
+        unsafe_allow_html=True,
+    )
 
     # Sidebar controls
     with st.sidebar:
         st.header("🎮 Controls")
-        
+
         selected_model = st.selectbox(
             "🤖 Select Vision Model",
             get_available_models(),
             index=0,
         )
-        
+
         format_type = st.selectbox(
             "📄 Output Format",
             ["markdown", "text", "json", "structured", "key_value", "table"],
-            help="Choose how you want the extracted text to be formatted"
+            help="Choose how you want the extracted text to be formatted",
         )
-        
+
         # Custom prompt input
         custom_prompt_input = st.text_area(
             "📝 Custom Prompt (optional)",
             value="",
-            help="Enter a custom prompt to override the default. Leave empty to use the predefined prompt."
+            help="Enter a custom prompt to override the default. Leave empty to use the predefined prompt.",
         )
 
         language = st.text_input(
             "🌍 Language",
             value="en",
-            help="Enter the language of the text in the image (e.g., English, Spanish, French)."
+            help="Enter the language of the text in the image (e.g., English, Spanish, French).",
         )
 
         max_workers = st.slider(
@@ -128,28 +149,31 @@ def main():
             min_value=1,
             max_value=8,
             value=2,
-            help="Number of images to process in parallel (for batch processing)"
+            help="Number of images to process in parallel (for batch processing)",
         )
 
         enable_preprocessing = st.checkbox(
             "🔍 Enable Preprocessing",
             value=True,
-            help="Apply image enhancement and preprocessing"
+            help="Apply image enhancement and preprocessing",
         )
-        
+
         st.markdown("---")
-        
+
         # Model info box
         if selected_model == "llava:7b":
-            st.info("LLaVA 7B: Efficient vision-language model optimized for real-time processing")
+            st.info(
+                "LLaVA 7B: Efficient vision-language model optimized for real-time processing"
+            )
         elif selected_model == "llama3.2-vision:11b":
-            st.info("Llama 3.2 Vision: Advanced model with high accuracy for complex text extraction")
+            st.info(
+                "Llama 3.2 Vision: Advanced model with high accuracy for complex text extraction"
+            )
         elif selected_model == "granite3.2-vision":
             st.info("Granite 3.2 Vision: Robust model for detailed document analysis")
         elif selected_model == "moondream":
             st.info("Moondream: Lightweight model designed for edge devices")
-        
-    
+
     # Determine if a custom prompt should be used (if text area is not empty)
     custom_prompt = custom_prompt_input if custom_prompt_input.strip() != "" else None
 
@@ -158,21 +182,21 @@ def main():
 
     # Main content area with tabs
     tab1, tab2 = st.tabs(["📸 File Processing", "ℹ️ About"])
-    
+
     with tab1:
         # File upload area with multiple file support
         uploaded_files = st.file_uploader(
             "Drop your images here",
-            type=['png', 'jpg', 'jpeg', 'tiff', 'bmp', 'pdf'],
+            type=["png", "jpg", "jpeg", "tiff", "bmp", "pdf"],
             accept_multiple_files=True,
-            help="Supported formats: PNG, JPG, JPEG, TIFF, BMP, PDF"
+            help="Supported formats: PNG, JPG, JPEG, TIFF, BMP, PDF",
         )
 
         if uploaded_files:
             # Create a temporary directory for uploaded files
             with tempfile.TemporaryDirectory() as temp_dir:
                 image_paths = []
-                
+
                 # Save uploaded files and collect paths
                 for uploaded_file in uploaded_files:
                     temp_path = os.path.join(temp_dir, uploaded_file.name)
@@ -186,12 +210,20 @@ def main():
                 for idx, uploaded_file in enumerate(uploaded_files):
                     with cols[idx % 4]:
                         try:
-                            if uploaded_file.name.lower().endswith('.pdf'):
+                            if uploaded_file.name.lower().endswith(".pdf"):
                                 # Display a placeholder for PDFs
-                                st.image("https://via.placeholder.com/150?text=PDF", caption=uploaded_file.name, use_column_width=True)
+                                st.image(
+                                    "https://via.placeholder.com/150?text=PDF",
+                                    caption=uploaded_file.name,
+                                    use_column_width=True,
+                                )
                             else:
                                 image = Image.open(uploaded_file)
-                                st.image(image, caption=uploaded_file.name, use_column_width=True)
+                                st.image(
+                                    image,
+                                    caption=uploaded_file.name,
+                                    use_column_width=True,
+                                )
                         except Exception as e:
                             st.error(f"Error displaying {uploaded_file.name}: {e}")
 
@@ -201,22 +233,22 @@ def main():
                         if len(image_paths) == 1:
                             # Single image processing
                             result = process_single_image(
-                                processor, 
-                                image_paths[0], 
+                                processor,
+                                image_paths[0],
                                 format_type,
                                 enable_preprocessing,
                                 custom_prompt,
-                                language
+                                language,
                             )
                             st.subheader("📝 Extracted Text")
                             st.markdown(result)
-                            
+
                             # Download button for single result
                             st.download_button(
                                 "📥 Download Result",
                                 result,
                                 file_name=f"ocr_result.{format_type}",
-                                mime="text/plain"
+                                mime="text/plain",
                             )
                         else:
                             # Batch processing
@@ -226,30 +258,38 @@ def main():
                                 format_type,
                                 enable_preprocessing,
                                 custom_prompt,
-                                language
+                                language,
                             )
-                            
+
                             # Display statistics
                             st.subheader("📊 Processing Statistics")
                             col1, col2, col3 = st.columns(3)
                             with col1:
-                                st.metric("Total Images", results['statistics']['total'])
+                                st.metric(
+                                    "Total Images", results["statistics"]["total"]
+                                )
                             with col2:
-                                st.metric("Successful", results['statistics']['successful'])
+                                st.metric(
+                                    "Successful", results["statistics"]["successful"]
+                                )
                             with col3:
-                                st.metric("Failed", results['statistics']['failed'])
+                                st.metric("Failed", results["statistics"]["failed"])
 
                             # Display results
                             st.subheader("📝 Extracted Text")
-                            for file_path, text in results['results'].items():
-                                with st.expander(f"Result: {os.path.basename(file_path)}"):
+                            for file_path, text in results["results"].items():
+                                with st.expander(
+                                    f"Result: {os.path.basename(file_path)}"
+                                ):
                                     st.markdown(text)
 
                             # Display errors if any
-                            if results['errors']:
+                            if results["errors"]:
                                 st.error("⚠️ Some files had errors:")
-                                for file_path, error in results['errors'].items():
-                                    st.warning(f"{os.path.basename(file_path)}: {error}")
+                                for file_path, error in results["errors"].items():
+                                    st.warning(
+                                        f"{os.path.basename(file_path)}: {error}"
+                                    )
 
                             # Download all results as JSON
                             if st.button("📥 Download All Results"):
@@ -258,7 +298,7 @@ def main():
                                     "📥 Download Results JSON",
                                     json_results,
                                     file_name="ocr_results.json",
-                                    mime="application/json"
+                                    mime="application/json",
                                 )
 
     with tab2:
@@ -280,6 +320,7 @@ def main():
         - **Granit 3.2 Vision**: Advanced model with high accuracy for complex documents.
         - **Moondream**: Model for edge devices.
         """)
+
 
 if __name__ == "__main__":
     main()
