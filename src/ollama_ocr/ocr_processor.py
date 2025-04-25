@@ -253,7 +253,7 @@ class OCRProcessor:
 
     def process_batch(
         self,
-        input_path: Union[str, List[str]],
+        input_file_path: Union[str, List[str]],
         format_type: str = "markdown",
         recursive: bool = False,
         preprocess: bool = True,
@@ -264,7 +264,7 @@ class OCRProcessor:
         Process multiple images in batch
 
         Args:
-            input_path: Path to directory or list of image paths
+            input_file_path: Path to directory or list of image paths
             format_type: Output format type
             recursive: Whether to search directories recursively
             preprocess: Whether to apply image preprocessing
@@ -276,8 +276,8 @@ class OCRProcessor:
         """
         # Collect all image paths
         image_paths = []
-        if isinstance(input_path, str):
-            base_path = Path(input_path)
+        if isinstance(input_file_path, str):
+            base_path = Path(input_file_path)
             if base_path.is_dir():
                 pattern = "**/*" if recursive else "*"
                 for ext in [".png", ".jpg", ".jpeg", ".pdf", ".tiff"]:
@@ -285,7 +285,7 @@ class OCRProcessor:
             else:
                 image_paths = [base_path]
         else:
-            image_paths = [Path(p) for p in input_path]
+            image_paths = [Path(p) for p in input_file_path]
 
         results = {}
         errors = {}

@@ -64,8 +64,8 @@ ocr = OCRProcessor(model_name='llama3.2-vision:11b', base_url="http://host.docke
 # you can pass your custom ollama api
 
 # Process an image
-result = ocr.process_image(
-    image_path="path/to/your/image.png", # path to your pdf files "path/to/your/file.pdf"
+result = ocr.process_file(
+    input_file_path="path/to/your/image.png", # path to your pdf files "path/to/your/file.pdf"
     format_type="markdown",  # Options: markdown, text, json, structured, key_value
     custom_prompt="Extract all text, focusing on dates and names.", # Optional custom prompt
     language="English" # Specify the language of the text (New! 🆕)
@@ -83,7 +83,7 @@ ocr = OCRProcessor(model_name='llama3.2-vision:11b', max_workers=4)  # max worke
 # Process multiple images
 # Process multiple images with progress tracking
 batch_results = ocr.process_batch(
-    input_path="path/to/images/folder",  # Directory or list of image paths
+    input_file_path="path/to/images/folder",  # Directory or list of image paths
     format_type="markdown",
     recursive=True,  # Search subdirectories
     preprocess=True,  # Enable image preprocessing
